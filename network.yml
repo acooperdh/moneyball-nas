@@ -1,0 +1,14 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: atlas
+    network_mode: "host" # needs host mode to see your other containers
+    privileged: true
+    volumes:
+      - /volume1/docker/appdata/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun # required for the vpn tunnel
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped

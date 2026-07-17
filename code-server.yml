@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Toronto
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+      - DEFAULT_WORKSPACE=/workspace
+    volumes:
+      # Stores VS Code extensions and user settings so they persist
+      - ./config:/config 
+      # Mounts your entire homelab directory into the container to edit configs
+      - /volume1:/workspace 
+    ports:
+      - "8443:8443"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+    restart: unless-stopped

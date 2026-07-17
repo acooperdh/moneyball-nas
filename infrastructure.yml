@@ -1,0 +1,63 @@
+services:
+#   adguardhome:
+#     image: adguard/adguardhome
+#     container_name: adguard_home
+#     restart: unless-start
+#     volumes:
+#       - /volume1/docker/appdata/adguard/data:/opt/adguardhome/work
+#       - /volume1/docker/appdata/adguard/conf:/opt/adguardhome/conf
+#     ports:
+#       - "53:53/tcp"
+#       - "53:53/udp"
+#       - "3000:3000/tcp" # initial setup UI
+#       - "85:80/tcp" # adguard web ui (moved to 85 to avoid npm conflict
+#     networks:
+#       default:
+#         ipv4_address: 172.20.0.100 # static ip for dns reliability
+# 
+#   npm:
+#     image: "jc21/nginx-proxy-manager:latest"
+#     container_name: nginx-proxy-manager
+#     restart: unless-stopped
+#     ports:
+#       - '80:80'
+#       - '443:443'
+#       - '81:81'
+#     volumes:
+#       - /volume1/docker/appdata/npm/data:/data
+#       - /volume1/docker/appdata/npm/letsencrypt:/etc/letsencrpyt
+#     depends_on:
+#       - adguard_home
+#   networks:
+#     default:
+#       ipam:
+#        config:
+#          - subnet: 172.20.0.0/16
+  glance:
+    image: glanceapp/glance:latest
+    container_name: glance
+    restart: unless-stopped
+    ports:
+      - 8081:8080
+    volumes:
+      - /volume1/docker/appdata/glance:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=America/Toronto
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - /volume1/docker/appdata/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

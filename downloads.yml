@@ -1,0 +1,158 @@
+services:
+  # --- VPN ---
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      -  /dev/net/tun:/dev/net/tun
+    ports:
+      - 8080:8080 # qbittorrent web ui
+      - 6881:6881 # qbittorrent torrent port
+      - 6881:6881/udp
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=10.2.0.2/32
+      - SERVER_COUNTRIES=United States
+      - VPN_PORT_FORWARDING=on
+    restart: unless-stopped
+
+  # --- TORRENT CLIENT ---
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=1000 # your user id
+      - PGID=1000 # your users group id
+      - TZ=America/Toronto
+      - WEBUI_PORT=8080
+    volumes:
+      - /volume1/docker/appdata/qbittorrent:/config
+      - /volume2/docker/data/torrents:/data/torrents
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  # --- SEARCH ENGINE ---
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Toronto
+    volumes:
+      - /volume1/docker/appdata/prowlarr:/config
+    ports:
+      - 9696:9696
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9696/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+  
+  # --- MOVIES ---
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=America/Toronto
+    volumes:
+      - /volume1/docker/appdata/radarr:/config
+      - /volume2/docker/data:/data # Map the root 'data' folder for hardlinks
+    ports:
+      - 7878:7878
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7878/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # --- TV SHOWS ---
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=America/Toronto
+    volumes:
+      - /volume1/docker/appdata/sonarr:/config
+      - /volume2/docker/data:/data
+    ports:
+      - 8989:8989
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # --- FlareSolverr --
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/Toronto
+    ports:
+      - 8191:8191
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8191/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # --- MEDIA SERVER ---
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    user: 1000:1000 # matches NAS user UID:GID
+    group_add:
+      - "122" # allows for hardware acceleration on UGREEN NAS 
+    network_mode: "host" #best for local discovery
+    volumes:
+      # CONFIG / CACHE keep these on volume 1 (m.2) for faster metadata loading
+      - /volume1/docker/appdata/jellyfin/config:/config
+      - /volume1/docker/appdata/jellyfin/cache:/cache
+      # TRANSCODES keep on m.2 to make scrubbing / skipping much faster
+      - /volume1/docker/appdata/jellyfin/trancode:/config/transcode
+      # MEDIA point to volume 2 (HDD) 
+      - /volume2/docker/data/media:/data/media:ro # keep media read only for jellyfin
+    devices:
+      # allows Jellyfin to use Intel iGPU for Hardware transcoding
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://192.168.2.96:8096
+
+  # --- REQUESTS ---
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment: 
+      - LOG_LEVEL=info
+      - TZ=America/Toronto
+    ports:
+      - 5055:5055
+    volumes:
+      - /volume1/docker/appdata/jellyseerr:/app/config
+    restart: unless-stopped
