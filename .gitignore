@@ -1,1 +1,5 @@
 .env
+config/
+vpn.conf
+appdata/
+flask-app/
