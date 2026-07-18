@@ -77,23 +77,23 @@ services:
     restart: unless-stopped
     
     radarr-4k:
-    image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr-4k
-    environment:
-      - PUID=1000
-      - PGID=100
-      - TZ=America/Toronto
-    volumes:
-      - /volume1/docker/appdata/radarr-4k:/config
-      - /volume2/docker/data:/data # Map the root 'data' folder for hardlinks
-    ports:
-      - 7879:7878
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      image: lscr.io/linuxserver/radarr:latest
+      container_name: radarr-4k
+      environment:
+        - PUID=1000
+        - PGID=100
+        - TZ=America/Toronto
+      volumes:
+        - /volume1/docker/appdata/radarr-4k:/config
+        - /volume2/docker/data:/data # Map the root 'data' folder for hardlinks
+      ports:
+        - 7879:7878
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:7878/ping"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+      restart: unless-stopped
 
   # --- TV SHOWS ---
   sonarr:
