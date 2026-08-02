@@ -1,6 +1,7 @@
 # 4K / Anime Library Split — Migration Runbook
 
 ## Goal
+
 - `radarr` / `sonarr` (default instances) only ever grab **1080p**.
 - `radarr-4k` / `sonarr-4k` handle **4K/2160p** exclusively.
 - `sonarr-anime` gets its own folder tree and quality profile.
@@ -24,14 +25,17 @@ copy qBittorrent is seeding from. This is what makes the migration below
 safe to do without touching qBittorrent at all.
 
 **Verify this before migrating anything:**
+
 1. In Radarr, Sonarr, Radarr-4k, Sonarr-4k: Settings → Media Management →
    confirm **"Use Hardlinks instead of Copy"** is enabled.
 2. Spot-check a couple of existing 4K files by comparing inode/link count
    between the torrents copy and the library copy, e.g.:
+
    ```
    stat -c '%i %h %n' /volume2/docker/data/torrents/<file>
    stat -c '%i %h %n' /volume2/docker/data/media/movies/<file>
    ```
+
    If the inode numbers match and link count (`%h`) is ≥2, it's a true
    hardlink — moving the library copy is safe, **no qBittorrent changes
    needed**, skip Step 6 for that file.
@@ -47,11 +51,13 @@ safe to do without touching qBittorrent at all.
 ---
 
 ## Step 1: Create the new folder
+
 - [ ] On the NAS, create `/volume2/docker/data/media/tv-anime/`.
 - [ ] Check ownership/permissions on the existing `movies-4k` folder
       (`ls -la`) and mirror them on `tv-anime` (likely `1000:100`, `775`).
 
 ## Step 2: Reconfigure root folders + quality profiles
+
 Do this first so no *new* content lands in the wrong place while you're
 migrating the backlog.
 
@@ -67,6 +73,7 @@ migrating the backlog.
       here.
 
 ## Step 3: Migrate existing 4K movies (radarr → radarr-4k)
+
 - [ ] In `radarr`, sort/filter Movies by the Quality column, list everything
       currently at 2160p.
 - [ ] Temporarily add `/data/media/movies-4k` as an extra root folder in
@@ -85,6 +92,7 @@ migrating the backlog.
 - [ ] Run Step 6 for any of these files that weren't hardlinked.
 
 ## Step 4: Migrate existing 4K TV (sonarr → sonarr-4k)
+
 Same pattern as Step 3, using Series instead of Movies, root folder
 `/data/media/tv-4k`, and Sonarr's "Import Existing Series" / Manual Import.
 
@@ -97,13 +105,16 @@ the 4K list series-by-series before running a bulk move.
 - [ ] Run Step 6 for any of these files that weren't hardlinked.
 
 ## Step 5: Migrate existing anime (sonarr/sonarr-4k → sonarr-anime)
+
 For any anime series added before `sonarr-anime` existed:
+
 - [ ] Set root folder to `/data/media/tv-anime` with Move Files.
 - [ ] Remove from the old instance (keep files).
 - [ ] Add root folder in `sonarr-anime` → Library Import.
 - [ ] Run Step 6 for any of these files that weren't hardlinked.
 
 ## Step 6: Fix qBittorrent seeding paths (only for non-hardlinked files)
+
 Only needed for files flagged in the "Before you start" check as link
 count `1`.
 
@@ -118,11 +129,13 @@ count `1`.
       this manual step isn't needed for future migrations.
 
 ## Step 7: Jellyseerr
+
 - [ ] Settings → Services: add `radarr-4k` and `sonarr-4k` as additional
       servers with the **4K Server** toggle enabled.
 - [ ] Add `sonarr-anime` as its own Sonarr server entry.
 
 ## Step 8: Jellyfin libraries
+
 - [ ] Add `/data/media/movies-4k` as an additional folder path on the
       existing Movies library.
 - [ ] Add `/data/media/tv-4k` similarly to the Shows library.
@@ -132,22 +145,25 @@ count `1`.
 - [ ] Trigger a library scan.
 
 ## Step 9: Permissions verification
+
 - [ ] `ls -la` the new/moved folders. Confirm owner `1000`, consistent
       group across the `*arr` containers (likely `100`), directory mode
       allowing group read/write (e.g. `775`).
 - [ ] If anything's off, one recursive fix pass (confirm the real group ID
       first, don't assume `100`):
       ```
-      chown -R 1000:100 /volume2/docker/data/media/movies-4k /volume2/docker/data/media/tv-4k /volume2/docker/data/media/tv-anime
+  chown -R 1000:100 /volume2/docker/data/media/movies-4k /volume2/docker/data/media/tv-4k /volume2/docker/data/media/tv-anime
       chmod -R 775 /volume2/docker/data/media/movies-4k /volume2/docker/data/media/tv-4k /volume2/docker/data/media/tv-anime
       ```
 
 ## Step 10: Docs
+
 - [x] `moneyball-folders.md` updated with `tv-anime/`.
 
 ---
 
 ## Verification checklist
+
 - [ ] Radarr/Sonarr UI shows migrated titles with correct file, no
       "missing" flag.
 - [ ] qBittorrent still shows migrated torrents seeding (not errored).
